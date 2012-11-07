@@ -1,0 +1,249 @@
+package com.blubee.ObjLoader;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.FloatBuffer;
+import java.nio.ShortBuffer;
+import java.util.ArrayList;
+
+import android.content.Context;
+
+public class ObjLoader {
+
+	Context context;
+	int len;
+	
+	ArrayList<Vector3> vertex;
+	ArrayList<Vector3> normal;
+	ArrayList<Face> faces;
+	int numFaces;
+	
+	short[] ind;
+	float[] verts;
+	float[] norms;
+	
+	float[] vtx;
+	FloatBuffer vertsBuffer;
+	ShortBuffer indicesBuffer;
+	
+	public ObjLoader(Context context)
+	{
+		this.context = context;
+		vertex = new ArrayList<Vector3>();
+		normal = new ArrayList<Vector3>();
+		faces = new ArrayList<Face>();
+	}
+	
+	
+	public void load(int id)
+	{
+		long start = System.currentTimeMillis();
+		InputStream is = context.getResources().openRawResource(id);
+		StringBuilder model = new StringBuilder("");
+		String line;
+		try {
+			BufferedReader reader = new BufferedReader(new InputStreamReader(is));
+			line = reader.readLine();
+			while(line != null)
+			{
+				model.append(line);
+				model.append("\n");
+				line = reader.readLine();
+			}
+			long end = System.currentTimeMillis();
+			System.out.println("total time "+(end-start)+" ms");
+			//System.out.println("model "+model);
+			//System.out.println("total time "+(end-start)+" ms");
+			is.close();
+			
+		} catch (IOException e) { e.printStackTrace();	}
+		parseModel(model.toString());
+		//return model.toString();
+	}
+	
+	public void parseModel(String model)
+	{
+		String[] lines = model.split("\n");
+		len = lines.length;
+		
+		for (int i = 0; i < len; i++) {
+			String l = lines[i];
+			if(l.startsWith("#")){
+				continue;
+			}
+			
+			if(l.startsWith("v ")){
+				String[] verts = l.split("[ ]");
+				parseVertex(i, l, verts);
+				//continue;
+			}
+			
+			if(l.startsWith("vn ")){
+				String[] normals = l.split("[ ]");
+				parseNormals(i, l, normals);
+				//continue;
+			}
+
+			if(l.startsWith("vt ")){
+				//String[] texture = l.split("[ ]+");
+				//nothing for now					
+				continue;
+			}
+			
+			if(l.startsWith("f ")){
+				String[] faces = l.split("[ ]+");
+				parseFaces(i, l, faces);
+				//continue;
+			}
+		}
+		
+		////////
+		for(int i = 0; i < vertex.size(); i++)
+		{
+			//System.out.println("vertex num : "+i+" "+vertex.get(i).toString());
+		}
+		//System.out.println("============================");
+		for(int i = 0; i < normal.size(); i++)
+		{
+			//System.out.println("normal  num : "+i+" "+normal.get(i).toString());
+		}
+		//System.out.println("============================");
+		for(int i = 0; i < numFaces; i++)
+		{
+			//System.out.println("faces "+faces.get(i).toString());
+		}
+		//System.out.println("============================");
+		ind = new short[numFaces*3];
+		int indx = 0;
+		for(int i = 0; i < numFaces; i++)
+		{
+			ind[indx++] = (short) faces.get(i).x;
+			ind[indx++] = (short) faces.get(i).y;
+			ind[indx++] = (short) faces.get(i).z;
+		}
+		indx = 0;
+		for(int i = 0; i < numFaces*3; i+=3)
+		{
+			System.out.println("index buffer "+ind[indx++]+" "+ind[indx++]+" "+ind[indx++]);
+		}
+		indx = 0;
+		verts = new float[vertex.size()*3];
+		for(int i = 0; i < vertex.size(); i++)
+		{
+			verts[indx++] = vertex.get(i).x;
+			verts[indx++] = vertex.get(i).y;
+			verts[indx++] = vertex.get(i).z;
+		}
+		indx = 0;
+		for(int i = 0; i < vertex.size()*3; i+=3)
+		{
+			//System.out.println("vertex buffer "+i+" || "+verts[indx++]+" "+verts[indx++]+" "+verts[indx++]);
+		}
+		vtx = new float[numFaces*9];
+		indx = 0;
+		for(int i = 0; i < numFaces; i++)
+		{
+			//System.out.println("face num "+i);
+			//System.out.println("faces "+faces.get(i).toString());
+			//System.out.println("vertex 1 for face num "+i+" || "+vertex.get(faces.get(i).x).toString());
+			//System.out.println("vertex 2 for face num "+i+" || "+vertex.get(faces.get(i).y).toString());
+			//System.out.println("vertex 3 for face num "+i+" || "+vertex.get(faces.get(i).z).toString());
+			vtx[indx++] = vertex.get(faces.get(i).x).x;
+			vtx[indx++] = vertex.get(faces.get(i).x).y;
+			vtx[indx++] = vertex.get(faces.get(i).x).z;
+			
+			vtx[indx++] = vertex.get(faces.get(i).y).x;
+			vtx[indx++] = vertex.get(faces.get(i).y).y;
+			vtx[indx++] = vertex.get(faces.get(i).y).z;
+			
+			vtx[indx++] = vertex.get(faces.get(i).z).x;
+			vtx[indx++] = vertex.get(faces.get(i).z).y;
+			vtx[indx++] = vertex.get(faces.get(i).z).z;
+			
+		}
+		indx = 0;
+		for(int i = 0; i < vtx.length; i+=3)
+		{
+			//System.out.println("vertex "+vtx[indx++]+" "+vtx[indx++]+" "+vtx[indx++]);
+		}
+		vertsBuffer = ByteBuffer.allocateDirect(verts.length*4).order(ByteOrder.nativeOrder()).asFloatBuffer();
+		vertsBuffer.put(verts).position(0);
+		
+		indicesBuffer = ByteBuffer.allocateDirect(ind.length*2).order(ByteOrder.nativeOrder()).asShortBuffer();
+		indicesBuffer.put(ind).position(0);
+	}
+	
+	private void parseVertex(int i, String l, String[] vert){
+		//System.out.println("================== VERTEX number "+i);
+		String[] v = l.split("[ ]");
+		vertex.add(new Vector3(Float.parseFloat(v[1]), Float.parseFloat(v[2]), Float.parseFloat(v[3])));
+		//System.out.println(" x "+(Float.parseFloat(v[1])+" y "+(Float.parseFloat(v[2])+" z "+(Float.parseFloat(v[3])))));
+	}
+	private void parseNormals(int i, String l, String[] norms){
+		//System.out.println("================== NORMAL number "+i);
+		String[] n = l.split("[ ]");
+		normal.add(new Vector3(Float.parseFloat(n[1]), Float.parseFloat(n[1]), Float.parseFloat(n[2]), Float.parseFloat(n[3])));
+		//System.out.println(" x "+(Float.parseFloat(n[1])+" y "+(Float.parseFloat(n[2])+" z "+(Float.parseFloat(n[3])))));
+	}
+	
+	private void parseFaces(int i, String s, String[] index){
+		String[] fi = s.split("[ ]");
+		
+		String[] a = fi[1].split("[/]");		
+		String[] b = fi[2].split("[/]");
+		String[] c = fi[3].split("[/]");
+		
+		//System.out.println("================== FACE number counter  || "+i);
+		//System.out.println(a[0]+" "+b[0]+" "+c[0]+" || "+a[2]);
+		//System.out.println((Integer.valueOf(a[0])-1)+" "+(Integer.valueOf(b[0])-1)+" "+(Integer.valueOf(c[0])-1)+" || "+(Integer.valueOf(a[2])-1));
+		faces.add(new Face((Integer.valueOf(a[0])-1), (Integer.valueOf(b[0])-1), (Integer.valueOf(c[0])-1), (Integer.valueOf(a[2])-1)));
+		
+		numFaces++;
+	}
+	
+	class Face
+	{
+		int x, y, z, n;
+		
+		public Face(int ...fs)
+		{
+			x = fs[0];
+			y = fs[1];
+			z = fs[2];
+			n = fs[3];
+		}
+		
+		@Override
+		public String toString()
+		{
+			return "( x "+x+" y "+y+" z "+z+" n "+n+" )";
+		}
+	}
+	
+	class Vector3
+	{
+		float x, y, z;
+		
+		public Vector3()
+		{
+			x = y = z = 0;
+		}
+		
+		public Vector3(float ...fs)
+		{
+			x = fs[0];
+			y = fs[1];
+			z = fs[2];
+		}
+		
+		@Override
+		public String toString()
+		{
+			return "( "+x+" "+y+" "+z+" )";
+		}
+	}
+}
