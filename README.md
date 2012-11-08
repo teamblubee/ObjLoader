@@ -1,4 +1,4 @@
 ObjLoader
 =========
 
-Simple Android .OBJ Model Loader
+Simple Android .OBJ Model Loader.
