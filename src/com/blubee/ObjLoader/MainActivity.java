@@ -22,7 +22,7 @@ public class MainActivity extends Activity {
         
         //rend.load(R.raw.monkey1);
         //rend.load(R.raw.cube1);
-        
+	//this is a test edit        
         setContentView(mView);
     }
 
